@@ -11,6 +11,19 @@ app.use(cors('*'));
 app.use(express.json());
 app.set('trust proxy', 1);
 
+const blockedIPs = new Set();
+
+// Middleware kiểm tra IP có trong danh sách chặn không
+const ipFilter = (req, res, next) => {
+    const ip = req.ip;
+
+    if (blockedIPs.has(ip)) {
+        return res.status(403).json({ message: 'Access forbidden: IP is permanently blocked' });
+    }
+
+    next();
+};
+
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 const secretKey = 'HDNDT-JDHT8FNEK-JJHR';
 
@@ -20,27 +33,20 @@ function decrypt(encryptedData) {
     return decrypted;
 }
 
-const ipFilter = (req, res, next) => {
-    const { data } = req.body;
-    const decryptedData = decrypt(data);
-    const values = JSON.parse(decryptedData);
-    const token = values?.token;
-
-    if (token !== process.env.TOKEN) {
-        res.status(403).json({ message: 'Access forbidden: Your IP is not allowed' });
-    } else {
-        next();
-    }
-};
-
 const registerLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000,
-    max: 7,
+    windowMs: 15 * 60 * 1000,
+    max: 10,
     message: 'Access forbidden: Too Many Requests',
     headers: true,
+    handler: (req, res) => {
+        blockedIPs.add(req.ip);
+        res.status(429).json({
+            message: 'Access forbidden: IP is permanently blocked',
+        });
+    }
 });
 
-app.post('/api/register',registerLimiter, ipFilter, (req, res) => {
+app.post('/api/register', ipFilter, registerLimiter, (req, res) => {
     
     try {
         const { data } = req.body;
