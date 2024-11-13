@@ -9,6 +9,7 @@ import rateLimit from "express-rate-limit";
 const app = express();
 app.use(cors('*'));
 app.use(express.json());
+app.set('trust proxy', 1);
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 const secretKey = 'HDNDT-JDHT8FNEK-JJHR';
